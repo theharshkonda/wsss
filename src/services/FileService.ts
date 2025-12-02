@@ -179,7 +179,7 @@ export class FileService {
   /**
    * Copy SAF file to cache and return file:// URI
    */
-  private static async copySafFileToCache(safUri: string, fileName: string): Promise<string> {
+  private static async copySafFileToCache(safUri: string, fileName: string, isVideo: boolean = false): Promise<string> {
     await this.ensureCacheDirectory();
 
     const cachePath = `${this.CACHE_DIR}/${fileName}`;
@@ -187,16 +187,16 @@ export class FileService {
     // Check if already cached
     const exists = await RNFS.exists(cachePath);
     if (exists) {
+      console.log('Using cached file:', fileName);
       return `file://${cachePath}`;
     }
 
     try {
-      // Read file content via SAF as base64
+      // Cache both images and videos synchronously to ensure they're available
+      console.log(`Caching ${isVideo ? 'video' : 'image'}:`, fileName);
       const base64Content = await readFile(safUri, {encoding: 'base64'});
-
-      // Write to cache
       await RNFS.writeFile(cachePath, base64Content, 'base64');
-
+      console.log('Successfully cached:', fileName);
       return `file://${cachePath}`;
     } catch (error) {
       console.error('Error caching SAF file:', fileName, error);
@@ -235,6 +235,8 @@ export class FileService {
           const statusesUri = await this.findStatusesFolder(whatsappDir.uri);
           if (statusesUri) {
             scanUri = statusesUri;
+            // Save the .Statuses folder URI for future use
+            await this.saveStatusesFolderUri(statusesUri);
             console.log('Using .Statuses folder URI:', statusesUri);
           }
         }
@@ -259,20 +261,21 @@ export class FileService {
           }
 
           if (type && file.uri) {
-            console.log('Copying media file to cache:', file.name);
+            const isVideo = type === 'video';
+            console.log(`Processing ${isVideo ? 'video' : 'image'}:`, file.name);
 
             // Copy SAF file to cache and get file:// URI for display
-            const displayUri = await this.copySafFileToCache(file.uri, file.name);
+            const displayUri = await this.copySafFileToCache(file.uri, file.name, isVideo);
 
             allMedia.push({
               id: `saf_${file.name}_${file.lastModified}`,
               uri: file.uri, // Original SAF URI for saving
-              displayUri: displayUri, // Cached file:// URI for display
+              displayUri: displayUri, // Cached file:// URI or original SAF URI for display
               name: file.name,
               type,
               size: file.size || 0,
               timestamp: file.lastModified || Date.now(),
-              isVideo: type === 'video',
+              isVideo: isVideo,
               mtime: file.lastModified || Date.now(),
               source: 'saf',
             });
@@ -303,6 +306,18 @@ export class FileService {
     const savedUri = await this.getSavedSafUri();
 
     if (savedUri) {
+      // Check if we have a saved .Statuses folder URI to use directly
+      const statusesFolderUri = await this.getStatusesFolderUri();
+
+      if (statusesFolderUri) {
+        console.log('Using saved .Statuses folder URI for scanning');
+        const safMedia = await this.safScan(statusesFolderUri);
+        if (safMedia.length > 0) {
+          return safMedia.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+        }
+      }
+
+      // Otherwise, scan from the parent URI (will auto-find .Statuses)
       const safMedia = await this.safScan(savedUri);
       if (safMedia.length > 0) {
         return safMedia.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
@@ -311,6 +326,28 @@ export class FileService {
 
     // Step 3: Return empty (UI will show popup)
     return [];
+  }
+
+  /**
+   * Save the .Statuses folder URI that was found automatically
+   */
+  static async saveStatusesFolderUri(statusesUri: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem('@whatsapp_statuses_folder_uri', statusesUri);
+    } catch (error) {
+      console.error('Error saving statuses folder URI:', error);
+    }
+  }
+
+  /**
+   * Get saved .Statuses folder URI
+   */
+  static async getStatusesFolderUri(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem('@whatsapp_statuses_folder_uri');
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -408,5 +445,32 @@ export class FileService {
   static async deleteMedia(uri: string): Promise<void> {
     const path = uri.replace('file://', '');
     await RNFS.unlink(path);
+  }
+
+  /**
+   * Check if a media item is already saved
+   */
+  static async isMediaSaved(item: MediaItem): Promise<boolean> {
+    try {
+      // If the item is from the saved directory, it's already saved
+      if (item.uri.includes('StatusBox')) {
+        return true;
+      }
+
+      // Check if a file with similar timestamp exists in saved directory
+      await this.ensureSaveDirectory();
+      const savedFiles = await RNFS.readDir(this.SAVE_PATH);
+
+      // Check if any saved file has the same extension and similar size
+      const extension = item.name.split('.').pop() || '';
+      const similarFile = savedFiles.find(f => {
+        const savedExt = f.name.split('.').pop() || '';
+        return savedExt === extension && Math.abs(f.size - item.size) < 1000; // Within 1KB
+      });
+
+      return !!similarFile;
+    } catch {
+      return false;
+    }
   }
 }

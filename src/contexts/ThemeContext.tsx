@@ -19,7 +19,7 @@ const lightTheme: Theme = {
     text: '#000000',
     subtext: '#666666',
     border: '#e0e0e0',
-    accent: '#ff8c00',
+    accent: '#25D366', // WhatsApp green
     error: '#ff3b30',
   },
 };
@@ -33,7 +33,7 @@ const darkTheme: Theme = {
     text: '#ffffff',
     subtext: '#999999',
     border: '#333333',
-    accent: '#ff8c00',
+    accent: '#25D366', // WhatsApp green
     error: '#ff453a',
   },
 };

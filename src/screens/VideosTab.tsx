@@ -84,15 +84,15 @@ export const VideosTab: React.FC = () => {
         <View style={styles.pickerContainer}>
           <View style={[styles.dialog, {backgroundColor: theme.colors.card}]}>
             <Text style={[styles.title, {color: theme.colors.text}]}>
-              Give access to your Status folder
+              Give access to WhatsApp Media
             </Text>
             <Text style={[styles.description, {color: theme.colors.subtext}]}>
-              To view WhatsApp statuses, please select the .Statuses folder in the next screen.
+              To view WhatsApp statuses, please select the Android/media folder in the next screen.
             </Text>
             <Text style={[styles.path, {color: theme.colors.subtext}]}>
               Navigate to:{'\n'}
-              Android → media → com.whatsapp →{'\n'}
-              WhatsApp → Media → .Statuses
+              Android → media{'\n'}
+              (The app will automatically find WhatsApp statuses)
             </Text>
             <ThemedButton
               title="Grant Access"

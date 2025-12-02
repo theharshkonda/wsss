@@ -46,7 +46,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
       data={items}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
-      numColumns={3}
+      numColumns={2}
       contentContainerStyle={styles.gridContainer}
       showsVerticalScrollIndicator={false}
     />

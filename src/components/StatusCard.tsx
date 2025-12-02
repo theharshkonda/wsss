@@ -16,9 +16,9 @@ interface StatusCardProps {
 
 const {width} = Dimensions.get('window');
 const CARD_MARGIN = 8;
-const CARDS_PER_ROW = 3;
+const CARDS_PER_ROW = 2;
 const CARD_WIDTH = (width - CARD_MARGIN * (CARDS_PER_ROW + 1)) / CARDS_PER_ROW;
-const CARD_HEIGHT = CARD_WIDTH * 1.2; // Slightly taller than width
+const CARD_HEIGHT = CARD_WIDTH * 1.5; // Increased height ratio
 
 export const StatusCard: React.FC<StatusCardProps> = ({item, onPress}) => {
   return (

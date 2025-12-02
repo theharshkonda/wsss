@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   StyleSheet,
@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   Platform,
   Image as RNImage,
+  Share,
 } from 'react-native';
 import {RouteProp, useRoute, useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import Video from 'react-native-video';
-import {Share} from 'react-native';
 import {FileService} from '../services/FileService';
 import {ThemedButton} from '../components/ThemedButton';
 import {useTheme} from '../contexts/ThemeContext';
@@ -30,11 +30,21 @@ export const MediaViewerScreen: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    // Check if media is already saved
+    (async () => {
+      const saved = await FileService.isMediaSaved(item);
+      setIsSaved(saved);
+    })();
+  }, [item]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       await FileService.saveMedia(item);
+      setIsSaved(true);
       Alert.alert('Success', 'Status saved to Pictures/StatusBox');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save status';
@@ -97,18 +107,21 @@ export const MediaViewerScreen: React.FC = () => {
       )}
 
       <View style={styles.actionButtons}>
-        <ThemedButton
-          title="Save"
-          onPress={handleSave}
-          loading={saving}
-          style={styles.actionButton}
-        />
-        <ThemedButton
-          title="Share"
-          onPress={handleShare}
-          variant="outline"
-          style={styles.actionButton}
-        />
+        {isSaved ? (
+          <ThemedButton
+            title="Share"
+            onPress={handleShare}
+            variant="outline"
+            style={styles.actionButton}
+          />
+        ) : (
+          <ThemedButton
+            title="Save"
+            onPress={handleSave}
+            loading={saving}
+            style={styles.actionButton}
+          />
+        )}
       </View>
     </View>
   );
@@ -155,10 +168,9 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
   },
   actionButton: {
-    flex: 1,
-    marginHorizontal: 8,
+    minWidth: 200,
   },
 });
